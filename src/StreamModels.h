@@ -31,6 +31,8 @@
 #include "SYCLStream2020.h"
 #elif defined(OMP)
 #include "OMPStream.h"
+#elif defined(SERIAL)
+#include "SerialStream.h"
 #elif defined(FUTHARK)
 #include "FutharkStream.h"
 #endif
@@ -92,6 +94,10 @@ std::unique_ptr<Stream<T>> make_stream(Args... args) {
 #elif defined(OMP)
   // Use the OpenMP implementation
   return std::make_unique<OMPStream<T>>(args...);
+
+#elif defined(SERIAL)
+  // Use the Serial implementation
+  return std::make_unique<SerialStream<T>>(array_size, deviceIndex);
 
 #elif defined(FUTHARK)
   // Use the Futhark implementation
