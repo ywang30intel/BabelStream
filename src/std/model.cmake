@@ -48,6 +48,20 @@ register_flag_optional(STDIMPL
   "DATA20"
 )
 
+register_flag_optional(AMDGPU_TARGET_OFFLOAD
+        "Enable offloading support (via the non-standard `-stdpar`) for
+         Clang/LLVM. The values are AMDGPU processors (https://www.llvm.org/docs/AMDGPUUsage.html#processors)
+         which will be passed in via `--offload-arch=` argument.
+
+         Example values are:
+           gfx906  - Compile for Vega20 GPUs
+           gfx908  - Compile for CDNA1 GPUs
+           gfx90a  - Compile for CDNA2 GPUs
+           gfx942  - Compile for CDNA3 GPUs
+           gfx1030 - Compile for RDNA2 NV21 GPUs
+           gfx1100 - Compile for RDNA3 NV31 GPUs"
+        "")
+
 macro(setup)
     register_definitions(${STDIMPL})
     if (${STDIMPL} STREQUAL "DATA17")
@@ -78,5 +92,14 @@ macro(setup)
     if (USE_ONEDPL)
         register_definitions(USE_ONEDPL)
         register_link_library(oneDPL)
+    endif ()
+    if (AMDGPU_TARGET_OFFLOAD)
+        set(AMDGPU_TARGET_OFFLOAD_FLAGS --hipstdpar --offload-arch=${AMDGPU_TARGET_OFFLOAD})
+        if (NOT AMDGPU_TARGET_OFFLOAD MATCHES "^gfx9")
+            list(APPEND AMDGPU_TARGET_OFFLOAD_FLAGS --hipstdpar-interpose-alloc)
+        endif ()
+
+        register_append_cxx_flags(ANY ${AMDGPU_TARGET_OFFLOAD_FLAGS})
+        register_append_link_flags(--hipstdpar)
     endif ()
 endmacro()
