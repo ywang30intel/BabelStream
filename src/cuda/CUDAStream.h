@@ -15,7 +15,8 @@
 
 #define IMPLEMENTATION_STRING "CUDA"
 
-#define TBSIZE 1024
+#define TBSIZE 256
+#define TBSIZE_DOT 1024
 
 template <class T>
 class CUDAStream : public Stream<T>
