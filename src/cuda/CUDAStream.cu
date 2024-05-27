@@ -19,6 +19,52 @@ __host__ __device__ constexpr size_t ceil_div(size_t a, size_t b) { return (a + 
 
 cudaStream_t stream;
 
+template <typename T>
+T* alloc_device(const intptr_t array_size) {
+  size_t array_bytes = sizeof(T) * array_size;
+  T* p = nullptr;
+#if defined(MANAGED)
+  CU(cudaMallocManaged(&p, array_bytes));
+#elif defined(PAGEFAULT)
+  p = (T*)malloc(array_bytes);
+#else
+  CU(cudaMalloc(&p, array_bytes));
+#endif
+  if (p == nullptr) throw std::runtime_error("Failed to allocate device array");
+  return p;
+}
+
+template <typename T>
+T* alloc_host(const intptr_t array_size) {
+  size_t array_bytes = sizeof(T) * array_size;
+  T* p = nullptr;
+#if defined(PAGEFAULT)
+  p = (T*)malloc(array_bytes);
+#else
+  CU(cudaHostAlloc(&p, array_bytes, cudaHostAllocDefault));
+#endif
+  if (p == nullptr) throw std::runtime_error("Failed to allocate host array");
+  return p;
+}
+
+template <typename T>
+void free_device(T* p) {
+#if defined(PAGEFAULT)
+  free(p);
+#else
+  CU(cudaFree(p));
+#endif
+}
+
+template <typename T>
+void free_host(T* p) {
+#if defined(PAGEFAULT)
+  free(p);
+#else
+  CU(cudaFreeHost(p));
+#endif
+}
+
 template <class T>
 CUDAStream<T>::CUDAStream(const intptr_t array_size, const int device_index)
   : array_size(array_size)
@@ -58,41 +104,21 @@ CUDAStream<T>::CUDAStream(const intptr_t array_size, const int device_index)
   if (props.totalGlobalMem < total_bytes)
     throw std::runtime_error("Device does not have enough memory for all 3 buffers");
 
-  // Create device buffers
-#if defined(MANAGED)
-  CU(cudaMallocManaged(&d_a, array_bytes));
-  CU(cudaMallocManaged(&d_b, array_bytes));
-  CU(cudaMallocManaged(&d_c, array_bytes));
-  CU(cudaHostAlloc(&sums, sums_bytes, cudaHostAllocDefault));
-#elif defined(PAGEFAULT)
-  d_a = (T*)malloc(array_bytes);
-  d_b = (T*)malloc(array_bytes);
-  d_c = (T*)malloc(array_bytes);
-  sums = (T*)malloc(sums_bytes);
-#else
-  CU(cudaMalloc(&d_a, array_bytes));
-  CU(cudaMalloc(&d_b, array_bytes));
-  CU(cudaMalloc(&d_c, array_bytes));
-  CU(cudaHostAlloc(&sums, sums_bytes, cudaHostAllocDefault));
-#endif
+  // Allocate buffers:
+  d_a = alloc_device<T>(array_size);
+  d_b = alloc_device<T>(array_size);
+  d_c = alloc_device<T>(array_size);
+  sums = alloc_host<T>(dot_num_blocks);
 }
 
 template <class T>
 CUDAStream<T>::~CUDAStream()
 {
   CU(cudaStreamDestroy(stream));
-
-#if defined(PAGEFAULT)
-  free(d_a);
-  free(d_b);
-  free(d_c);
-  free(sums);
-#else
-  CU(cudaFree(d_a));
-  CU(cudaFree(d_b));
-  CU(cudaFree(d_c));
-  CU(cudaFreeHost(sums));
-#endif
+  free_device(d_a);
+  free_device(d_b);
+  free_device(d_c);
+  free_host(sums);
 }
 
 template <typename T>
