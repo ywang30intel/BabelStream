@@ -366,7 +366,8 @@ void check_solution(const size_t num_times,
 
   // Error relative tolerance check
   size_t failed = 0;
-  T epsi = std::numeric_limits<T>::epsilon() * T(100000.0);
+  T eps = std::numeric_limits<T>::epsilon();
+  T epsi = eps * T(100000.0);
   auto check = [&](const char* name, T is, T should, T e, size_t i = size_t(-1)) {
     if (e > epsi || std::isnan(e) || std::isnan(is)) {
       ++failed;
@@ -379,7 +380,7 @@ void check_solution(const size_t num_times,
   };
 
   // Sum
-  T eS = std::fabs(sum - goldS) / std::fabs(goldS);
+  T eS = std::fabs(sum - goldS) / std::fabs(goldS + eps);
   for (size_t i = 0; i < num_benchmarks; ++i) {
     if (bench[i].id != BenchId::Dot) continue;
     if (run_benchmark(bench[i]))
@@ -390,9 +391,9 @@ void check_solution(const size_t num_times,
   // Calculate the L^infty-norm relative error
   for (size_t i = 0; i < a.size(); ++i) {
     T vA = a[i], vB = b[i], vC = c[i];
-    T eA = std::fabs(vA - goldA) / std::fabs(goldA);
-    T eB = std::fabs(vB - goldB) / std::fabs(goldB);
-    T eC = std::fabs(vC - goldC) / std::fabs(goldC);
+    T eA = std::fabs(vA - goldA) / std::fabs(goldA + eps);
+    T eB = std::fabs(vB - goldB) / std::fabs(goldB + eps);
+    T eC = std::fabs(vC - goldC) / std::fabs(goldC + eps);
 
     check("a", a[i], goldA, eA, i);
     check("b", b[i], goldB, eB, i);
