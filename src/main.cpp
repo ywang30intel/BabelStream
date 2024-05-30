@@ -244,7 +244,13 @@ void run()
       }
       std::cout << " ";
     }
-    std::cout << num_times << " times" << std::endl;
+    std::cout << num_times << " times in ";
+    switch (order) {
+    case BenchOrder::Classic: std::cout << " Classic"; break;
+    case BenchOrder::Isolated: std::cout << " Classic"; break;
+    default: std::cerr << "Error: Unknown order" << std::endl; abort();
+    };
+    std::cout << " order " << std::endl;
     std::cout << "Number of elements: " << ARRAY_SIZE << std::endl;
     std::cout << "Precision: " << (sizeof(T) == sizeof(float)? "float" : "double") << std::endl;
 
