@@ -5,18 +5,25 @@
 // source code
 
 #include "CUDAStream.h"
+#include <nvml.h>
 
 #if !defined(UNROLL_FACTOR)
 #define UNROLL_FACTOR 4
 #endif
 
-[[noreturn]] inline void error(char const* file, int line, char const* expr, cudaError_t e) {
-  std::fprintf(stderr, "Error at %s:%d: %s (%d)\n  %s\n", file, line, cudaGetErrorString(e), e, expr);
+[[noreturn]] inline void cuda_error(char const* file, int line, char const* expr, cudaError_t e) {
+  std::fprintf(stderr, "CUDA Error at %s:%d: %s (%d)\n  %s\n", file, line, cudaGetErrorString(e), e, expr);
+  exit(e);
+}
+
+[[noreturn]] inline void nvml_error(char const* file, int line, char const* expr, nvmlReturn_t e) {
+  std::fprintf(stderr, "NVML Error at %s:%d: %s (%d)\n  %s\n", file, line, nvmlErrorString(e), e, expr);
   exit(e);
 }
 
 // The do while is there to make sure you remember to put a semi-colon after calling CU
-#define CU(EXPR) do { auto __e = (EXPR); if (__e != cudaSuccess) error(__FILE__, __LINE__, #EXPR, __e); } while(false)
+#define CU(EXPR) do { auto __e = (EXPR); if (__e != cudaSuccess) cuda_error(__FILE__, __LINE__, #EXPR, __e); } while(false)
+#define NVML(EXPR) do { auto __e = (EXPR); if (__e != NVML_SUCCESS) nvml_error(__FILE__, __LINE__, #EXPR, __e); } while(false)
 
 // It is best practice to include __device__ and constexpr even though in BabelStream it only needs to be __host__ const
 __host__ __device__ constexpr size_t ceil_div(size_t a, size_t b) { return (a + b - 1) / b; }
@@ -83,20 +90,39 @@ CUDAStream<T>::CUDAStream(const intptr_t array_size, const int device_index)
   CU(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
 
   // Print out device information
-  std::cout << "Using CUDA device " << getDeviceName(device_index) << std::endl;
-  std::cout << "Driver: " << getDeviceDriver(device_index) << std::endl;
-#if defined(MANAGED)
-  std::cout << "Memory: MANAGED" << std::endl;
-#elif defined(PAGEFAULT)
-  std::cout << "Memory: PAGEFAULT" << std::endl;
-#else
-  std::cout << "Memory: DEFAULT" << std::endl;
-#endif
+  std::cout << "CUDA Driver: " << getDeviceDriver(device_index) << std::endl;
+  NVML(nvmlInit());
+  cudaDeviceProp dprop;
+  CU(cudaGetDeviceProperties(&dprop, device_index));
+  unsigned int memclock;
+  char mybus[16];
+  sprintf(&mybus[0], "%04x:%02x:%02x.0", dprop.pciDomainID, dprop.pciBusID, dprop.pciDeviceID);
+  nvmlDevice_t nvmldev;
+  NVML(nvmlDeviceGetHandleByPciBusId(mybus, &nvmldev));
+  NVML(nvmlDeviceGetClockInfo(nvmldev, NVML_CLOCK_MEM, &memclock));
+  std::cout << "CUDA Device " << device_index << ": \""
+	    << getDeviceName(device_index)
+	    << "\" " << dprop.multiProcessorCount << " SMs(" << dprop.major << "," << dprop.minor << ") "
+	    << "Memory: " << memclock << " MHz x " << dprop.memoryBusWidth << "-bit = "
+	    << 2.0*memclock*(dprop.memoryBusWidth/8)/1000.0 << " GB/s PEAK, ECC is "
+	    << (dprop.ECCEnabled ? "ON" : "OFF")
+	    << std::endl;
 
-  // Query device for sensible dot kernel block count
-  cudaDeviceProp props;
-  CU(cudaGetDeviceProperties(&props, device_index));
-  dot_num_blocks = props.multiProcessorCount * 4;
+  // Print Memory allocation API used for buffers
+  std::cout << "Memory Allocation: ";
+  #if defined(MANAGED)
+      std::cout << "MANAGED";
+  #elif defined(PAGEFAULT)
+      std::cout << "PAGEFAULT";
+  #else
+      std::cout << "DEFAULT";
+  #endif
+  std::cout << std::endl;
+
+  std::cout << "Parallel for kernel config: thread blocks of size " << TBSIZE << std::endl;
+
+  // Set sensible dot kernel block count
+  dot_num_blocks = dprop.multiProcessorCount * 4;
 
   // Size of partial sums for dot kernels
   size_t sums_bytes = sizeof(T) * dot_num_blocks;
@@ -105,8 +131,8 @@ CUDAStream<T>::CUDAStream(const intptr_t array_size, const int device_index)
   std::cout << "Reduction kernel config: " << dot_num_blocks << " groups of (fixed) size " << TBSIZE_DOT << std::endl;
 
   // Check buffers fit on the device
-  if (props.totalGlobalMem < total_bytes)
-    throw std::runtime_error("Device does not have enough memory for all 3 buffers");
+  if (dprop.totalGlobalMem < total_bytes)
+    throw std::runtime_error("Device does not have enough memory for all buffers");
 
   // Allocate buffers:
   d_a = alloc_device<T>(array_size);

@@ -43,6 +43,9 @@ macro(setup)
       "--extended-lambda" "-DUNROLL_FACTOR=${UNROLL_FACTOR}" ${CUDA_EXTRA_FLAGS})
     string(REPLACE ";" " " CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 
+    # Link against the NVIDIA Management Library for device information
+    register_link_library("nvidia-ml")
+    
     # CMake defaults to -O2 for CUDA at Release, let's wipe that and use the global RELEASE_FLAG
     # appended later
     wipe_gcc_style_optimisation_flags(CMAKE_CUDA_FLAGS_${BUILD_TYPE})
