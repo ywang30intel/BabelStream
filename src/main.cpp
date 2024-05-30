@@ -247,7 +247,7 @@ void run()
     std::cout << num_times << " times in ";
     switch (order) {
     case BenchOrder::Classic: std::cout << " Classic"; break;
-    case BenchOrder::Isolated: std::cout << " Classic"; break;
+    case BenchOrder::Isolated: std::cout << " Isolated"; break;
     default: std::cerr << "Error: Unknown order" << std::endl; abort();
     };
     std::cout << " order " << std::endl;
@@ -517,12 +517,12 @@ void parseArguments(int argc, char *argv[])
     {
       if (++i >= argc)
       {
-       std::cerr << "Expected benchmark order after --order. Options: \"classic\" (default), \"isolated\"."
+       std::cerr << "Expected benchmark order after --order. Options: \"Classic\" (default), \"Isolated\"."
 		  << std::endl;
         exit(EXIT_FAILURE);
       }
       auto key = std::string(argv[i]);
-      if (key == "isolated")
+      if (key == "Isolated")
       {
         order = BenchOrder::Isolated;
       }
@@ -573,7 +573,7 @@ void parseArguments(int argc, char *argv[])
       std::cout << "      --float              Use floats (rather than doubles)" << std::endl;
       std::cout << "  -o  --only       NAME    Only run one benchmark (see --print-names)" << std::endl;
       std::cout << "      --print-names        Prints all available benchmark names" << std::endl;
-      std::cout << "      --order              Benchmark run order: \"classic\" (default) or \"isolated\"." << std::endl;
+      std::cout << "      --order              Benchmark run order: \"Classic\" (default) or \"Isolated\"." << std::endl;
       std::cout << "      --csv                Output as csv table" << std::endl;
       std::cout << "      --megabytes          Use MB=10^6 for bandwidth calculation (default)" << std::endl;
       std::cout << "      --mibibytes          Use MiB=2^20 for bandwidth calculation (default MB=10^6)" << std::endl;
