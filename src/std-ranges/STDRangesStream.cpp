@@ -12,9 +12,10 @@
 #endif
 
 template <class T>
-STDRangesStream<T>::STDRangesStream(const intptr_t ARRAY_SIZE, int device)
-noexcept : array_size{ARRAY_SIZE},
-  a(alloc_raw<T>(ARRAY_SIZE)), b(alloc_raw<T>(ARRAY_SIZE)), c(alloc_raw<T>(ARRAY_SIZE))
+STDRangesStream<T>::STDRangesStream(BenchId bs, const intptr_t array_size, const int device_id,
+				    T initA, T initB, T initC)
+  noexcept : array_size{array_size},
+	     a(alloc_raw<T>(array_size)), b(alloc_raw<T>(array_size)), c(alloc_raw<T>(array_size))
 {
     std::cout << "Backing storage typeid: " << typeid(a).name() << std::endl;
 #ifdef USE_ONEDPL
@@ -30,6 +31,7 @@ noexcept : array_size{ARRAY_SIZE},
 #endif
     std::cout << std::endl;
 #endif
+    init_arrays(initA, initB, initC);
 }
 
 template<class T>
@@ -54,12 +56,11 @@ void STDRangesStream<T>::init_arrays(T initA, T initB, T initC)
 }
 
 template <class T>
-void STDRangesStream<T>::read_arrays(std::vector<T>& h_a, std::vector<T>& h_b, std::vector<T>& h_c)
+void STDRangesStream<T>::get_arrays(T const*& h_a, T const*& h_b, T const*& h_c)
 {
-  // Element-wise copy.
-    std::copy(a, a + array_size, h_a.begin());
-    std::copy(b, b + array_size, h_b.begin());
-    std::copy(c, c + array_size, h_c.begin());
+  h_a = a;
+  h_b = b;
+  h_c = c;
 }
 
 template <class T>

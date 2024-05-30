@@ -15,11 +15,12 @@ std::vector<sycl::device> devices;
 void getDeviceList(void);
 
 template <class T>
-SYCLStream<T>::SYCLStream(const intptr_t ARRAY_SIZE, const int device_index)
-: array_size {ARRAY_SIZE},
-  d_a {ARRAY_SIZE},
-  d_b {ARRAY_SIZE},
-  d_c {ARRAY_SIZE},
+SYCLStream<T>::SYCLStream(BenchId bs, const intptr_t array_size, const int device_index,
+			  T initA, T initB, T initC)
+  : array_size(array_size),
+  d_a {array_size},
+  d_b {array_size},
+  d_c {array_size},
   d_sum {1}
 {
   if (!cached)
@@ -68,7 +69,7 @@ SYCLStream<T>::SYCLStream(const intptr_t ARRAY_SIZE, const int device_index)
   devices.clear();
   cached = true;
 
-
+  init_arrays(initA, initB, initC);
 }
 
 
@@ -164,18 +165,17 @@ T SYCLStream<T>::dot()
     sycl::accessor kb {d_b, cgh, sycl::read_only};
 
     cgh.parallel_for(sycl::range<1>{array_size},
-       // Reduction object, to perform summation - initialises the result to zero
-       // hipSYCL doesn't sypport the initialize_to_identity property yet
-#if defined(__HIPSYCL__) || defined(__OPENSYCL__)
+      // Reduction object, to perform summation - initialises the result to zero
+      // AdaptiveCpp doesn't sypport the initialize_to_identity property yet
+#if defined(__HIPSYCL__) || defined(__OPENSYCL__) || defined(__ADAPTIVECPP__)
       sycl::reduction(d_sum. template get_access<sycl::access_mode::read_write>(cgh), sycl::plus<T>()),
 #else
-      sycl::reduction(d_sum, cgh, sycl::plus<T>(), sycl::property::reduction::initialize_to_identity{}),
-#endif
+      sycl::reduction(sum, sycl::plus<T>(), sycl::property::reduction::initialize_to_identity{}),
+#endif		     
       [=](sycl::id<1> idx, auto& sum)
       {
         sum += ka[idx] * kb[idx];
       });
-
   });
 
   // Get access on the host, and return a copy of the data (single number)
@@ -206,17 +206,14 @@ void SYCLStream<T>::init_arrays(T initA, T initB, T initC)
 }
 
 template <class T>
-void SYCLStream<T>::read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector<T>& c)
+void SYCLStream<T>::get_arrays(T const*& a, T const*& b, T const*& c)
 {
   sycl::host_accessor _a {d_a, sycl::read_only};
   sycl::host_accessor _b {d_b, sycl::read_only};
   sycl::host_accessor _c {d_c, sycl::read_only};
-  for (int i = 0; i < array_size; i++)
-  {
-    a[i] = _a[i];
-    b[i] = _b[i];
-    c[i] = _c[i];
-  }
+  a = &_a[0];
+  b = &_b[0];
+  c = &_c[0];
 }
 
 void getDeviceList(void)

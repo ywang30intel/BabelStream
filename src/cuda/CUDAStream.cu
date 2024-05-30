@@ -77,7 +77,8 @@ void free_host(T* p) {
 }
 
 template <class T>
-CUDAStream<T>::CUDAStream(const intptr_t array_size, const int device_index)
+CUDAStream<T>::CUDAStream(BenchId bs, const intptr_t array_size, const int device_index,
+			  T initA, T initB, T initC)
   : array_size(array_size)
 {
   // Set device
@@ -131,14 +132,20 @@ CUDAStream<T>::CUDAStream(const intptr_t array_size, const int device_index)
   std::cout << "Reduction kernel config: " << dot_num_blocks << " groups of (fixed) size " << TBSIZE_DOT << std::endl;
 
   // Check buffers fit on the device
-  if (dprop.totalGlobalMem < total_bytes)
+  if (dprop.totalGlobalMem < total_bytes) {
+    std::cerr << "Requested array size of " << total_bytes * 1e-9
+	      << " GB exceeds memory capacity of " << dprop.totalGlobalMem * 1e-9 << " GB !" << std::endl;
     throw std::runtime_error("Device does not have enough memory for all buffers");
+  }
 
   // Allocate buffers:
   d_a = alloc_device<T>(array_size);
   d_b = alloc_device<T>(array_size);
   d_c = alloc_device<T>(array_size);
   sums = alloc_host<T>(dot_num_blocks);
+
+  // Initialize buffers:
+  init_arrays(initA, initB, initC);
 }
 
 template <class T>
@@ -204,21 +211,26 @@ void CUDAStream<T>::init_arrays(T initA, T initB, T initC)
 }
 
 template <class T>
-void CUDAStream<T>::read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector<T>& c)
+void CUDAStream<T>::get_arrays(T const*& a, T const*& b, T const*& c)
 {
-  // Copy device memory to host
-#if defined(PAGEFAULT) || defined(MANAGED)
   CU(cudaStreamSynchronize(stream));
-  for (intptr_t i = 0; i < array_size; ++i)
-  {
-    a[i] = d_a[i];
-    b[i] = d_b[i];
-    c[i] = d_c[i];
-  }
+#if defined(PAGEFAULT) || defined(MANAGED)
+  // Unified memory: return pointers to device memory
+  a = d_a;
+  b = d_b;
+  c = d_c;
 #else
-  CU(cudaMemcpy(a.data(), d_a, a.size()*sizeof(T), cudaMemcpyDeviceToHost));
-  CU(cudaMemcpy(b.data(), d_b, b.size()*sizeof(T), cudaMemcpyDeviceToHost));
-  CU(cudaMemcpy(c.data(), d_c, c.size()*sizeof(T), cudaMemcpyDeviceToHost));
+  // No Unified memory: copy data to the host
+  size_t nbytes = array_size * sizeof(T);
+  h_a.resize(array_size);
+  h_b.resize(array_size);
+  h_c.resize(array_size);
+  a = h_a.data();
+  b = h_b.data();
+  c = h_c.data();
+  CU(cudaMemcpy(h_a.data(), d_a, nbytes, cudaMemcpyDeviceToHost));
+  CU(cudaMemcpy(h_b.data(), d_b, nbytes, cudaMemcpyDeviceToHost));
+  CU(cudaMemcpy(h_c.data(), d_c, nbytes, cudaMemcpyDeviceToHost));
 #endif
 }
 

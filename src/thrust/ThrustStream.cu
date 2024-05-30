@@ -19,7 +19,8 @@ static inline void synchronise()
 }
 
 template <class T>
-ThrustStream<T>::ThrustStream(const intptr_t array_size, int device)
+ThrustStream<T>::ThrustStream(BenchId bs, const intptr_t array_size, const int device,
+			      T initA, T initB, T initC)
     : array_size{array_size}, a(array_size), b(array_size), c(array_size) {
   std::cout << "Using CUDA device: " << getDeviceName(device) << std::endl;
   std::cout << "Driver: " << getDeviceDriver(device) << std::endl;
@@ -36,8 +37,6 @@ ThrustStream<T>::ThrustStream(const intptr_t array_size, int device)
   std::cout << "Thrust backend: TBB" << std::endl;
 #elif THRUST_DEVICE_SYSTEM == THRUST_DEVICE_SYSTEM_CPP
   std::cout << "Thrust backend: CPP" << std::endl;
-#elif THRUST_DEVICE_SYSTEM == THRUST_DEVICE_SYSTEM_TBB
-  std::cout << "Thrust backend: TBB" << std::endl;
 #else
 
 #if defined(THRUST_DEVICE_SYSTEM_HIP) && THRUST_DEVICE_SYSTEM == THRUST_DEVICE_SYSTEM_HIP
@@ -48,6 +47,7 @@ ThrustStream<T>::ThrustStream(const intptr_t array_size, int device)
 
 #endif
 
+  init_arrays(initA, initB, initC);
 }
 
 template <class T>
@@ -60,11 +60,23 @@ void ThrustStream<T>::init_arrays(T initA, T initB, T initC)
 }
 
 template <class T>
-void ThrustStream<T>::read_arrays(std::vector<T>& h_a, std::vector<T>& h_b, std::vector<T>& h_c)
+void ThrustStream<T>::get_arrays(T const*& a_, T const*& b_, T const*& c_)
 {
+  #if defined(MANAGED)
+  a_ = &*a.data();
+  b_ = &*b.data();
+  c_ = &*c.data();
+  #else
+  h_a.resize(array_size);
+  h_b.resize(array_size);
+  h_c.resize(array_size);
   thrust::copy(a.begin(), a.end(), h_a.begin());
   thrust::copy(b.begin(), b.end(), h_b.begin());
   thrust::copy(c.begin(), c.end(), h_c.begin());
+  a_ = h_a.data();
+  b_ = h_b.data();
+  c_ = h_c.data();
+  #endif
 }
 
 template <class T>

@@ -44,9 +44,14 @@ if ((NOT BUILD_TYPE STREQUAL RELEASE) AND (NOT BUILD_TYPE STREQUAL DEBUG))
     message(FATAL_ERROR "Only Release or Debug is supported, got `${CMAKE_BUILD_TYPE}`")
 endif ()
 
+option(BUILD_NATIVE "Builds for the current systems CPU and GPU architecture." ON)
+
 # setup some defaults flags for everything
 set(DEFAULT_DEBUG_FLAGS -O2 -fno-omit-frame-pointer)
-set(DEFAULT_RELEASE_FLAGS -O3 -march=native)
+set(DEFAULT_RELEASE_FLAGS -O3)
+if (BUILD_NATIVE)
+    set(DEFAULT_RELEASE_FLAGS ${DEFAULT_RELEASE_FLAGS} -march=native)
+endif()
 
 macro(hint_flag FLAG DESCRIPTION)
     if (NOT DEFINED ${FLAG})
