@@ -97,7 +97,7 @@ std::unique_ptr<Stream<T>> make_stream(Args... args) {
 
 #elif defined(SERIAL)
   // Use the Serial implementation
-  return std::make_unique<SerialStream<T>>(array_size, deviceIndex);
+  return std::make_unique<SerialStream<T>>(args...);
 
 #elif defined(FUTHARK)
   // Use the Futhark implementation

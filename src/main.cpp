@@ -328,10 +328,11 @@ void check_solution(const size_t num_times, T const* a, T const* b, T const* c, 
     abort();
   }
 
-  // Error relative tolerance check
+  // Error relative tolerance check - a higher tolerance is used for reductions.
   size_t failed = 0;
-  T max_rel = std::numeric_limits<T>::epsilon() * T(1000000.0);
-  auto check = [&](const char* name, T is, T should, size_t i = size_t(-1)) {
+  T max_rel = std::numeric_limits<T>::epsilon() * T(100.0);
+  T max_rel_dot = std::numeric_limits<T>::epsilon() * T(10000000.0);
+  auto check = [&](const char* name, T is, T should, T max_rel, size_t i = size_t(-1)) {
     // Relative difference:
     T diff = std::abs(is - should);
     T abs_is = std::abs(is);
@@ -353,15 +354,15 @@ void check_solution(const size_t num_times, T const* a, T const* b, T const* c, 
   for (size_t i = 0; i < num_benchmarks; ++i) {
     if (bench[i].id != BenchId::Dot) continue;
     if (run_benchmark(bench[i]))
-      check("sum", sum,  goldS);
+      check("sum", sum, goldS, max_rel_dot);
     break;
   }
 
   // Calculate the L^infty-norm relative error
   for (size_t i = 0; i < array_size; ++i) {
-    check("a", a[i], goldA, i);
-    check("b", b[i], goldB, i);
-    check("c", c[i], goldC, i);
+    check("a", a[i], goldA, i, max_rel);
+    check("b", b[i], goldB, i, max_rel);
+    check("c", c[i], goldC, i, max_rel);
   }
 
   if (failed > 0 && !silence_errors)

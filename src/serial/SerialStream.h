@@ -23,21 +23,20 @@ class SerialStream : public Stream<T>
     intptr_t array_size;
 
     // Device side pointers
-    T *a;
-    T *b;
-    T *c;
+    T *a, *b, *c;
 
   public:
-    SerialStream(const intptr_t, int);
+    SerialStream(BenchId bs, const intptr_t array_size, const int device_id,
+		 T initA, T initB, T initC);
     ~SerialStream();
 
-    virtual void copy() override;
-    virtual void add() override;
-    virtual void mul() override;
-    virtual void triad() override;
-    virtual void nstream() override;
-    virtual T dot() override;
+    void copy() override;
+    void add() override;
+    void mul() override;
+    void triad() override;
+    void nstream() override;
+    T dot() override;
 
-    virtual void init_arrays(T initA, T initB, T initC) override;
-    virtual void read_arrays(std::vector<T>& a, std::vector<T>& b, std::vector<T>& c) override;
+    void get_arrays(T const*& a, T const*& b, T const*& c) override;
+    void init_arrays(T initA, T initB, T initC);
 };

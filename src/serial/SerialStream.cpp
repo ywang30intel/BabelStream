@@ -13,14 +13,16 @@
 #endif
 
 template <class T>
-SerialStream<T>::SerialStream(const intptr_t ARRAY_SIZE, int device)
+SerialStream<T>::SerialStream(BenchId bs, const intptr_t array_size, const int device_id,
+			      T initA, T initB, T initC)
+  : array_size{array_size}
 {
-  array_size = ARRAY_SIZE;
-
   // Allocate on the host
   this->a = (T*)aligned_alloc(ALIGNMENT, sizeof(T)*array_size);
   this->b = (T*)aligned_alloc(ALIGNMENT, sizeof(T)*array_size);
   this->c = (T*)aligned_alloc(ALIGNMENT, sizeof(T)*array_size);
+
+  init_arrays(initA, initB, initC);
 }
 
 template <class T>
@@ -44,15 +46,11 @@ void SerialStream<T>::init_arrays(T initA, T initB, T initC)
 }
 
 template <class T>
-void SerialStream<T>::read_arrays(std::vector<T>& h_a, std::vector<T>& h_b, std::vector<T>& h_c)
+void SerialStream<T>::get_arrays(T const*& h_a, T const*& h_b, T const*& h_c)
 {
-  for (intptr_t i = 0; i < array_size; i++)
-  {
-    h_a[i] = a[i];
-    h_b[i] = b[i];
-    h_c[i] = c[i];
-  }
-
+  h_a = a;
+  h_b = b;
+  h_c = c;
 }
 
 template <class T>
