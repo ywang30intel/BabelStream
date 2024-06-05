@@ -7,10 +7,13 @@
 
 #pragma once
 
+#include <cstdint>
 #include <array>
 #include <vector>
 #include <string>
 #include "benchmark.h"
+
+using std::intptr_t;
 
 template <class T>
 class Stream

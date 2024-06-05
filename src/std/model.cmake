@@ -1,10 +1,9 @@
-
 register_flag_optional(CMAKE_CXX_COMPILER
         "Any CXX compiler that is supported by CMake detection"
         "c++")
 
 register_flag_optional(NVHPC_OFFLOAD
-        "Enable offloading support (via the non-standard `-stdpar`) for the new NVHPC SDK.
+        "Enable offloading support (via the non-standard `-stdpar=gpu`) for the new NVHPC SDK.
          The values are Nvidia architectures in ccXY format will be passed in via `-gpu=` (e.g `cc70`)
 
          Possible values are:
@@ -16,11 +15,13 @@ register_flag_optional(NVHPC_OFFLOAD
            cc72  - Compile for compute capability 7.2
            cc75  - Compile for compute capability 7.5
            cc80  - Compile for compute capability 8.0
-           ccall - Compile for all supported compute capabilities"
-        "")
+           cc90  - Compile for compute capability 8.0
+           ccall - Compile for all supported compute capabilities
+           ccnative - Compiles for compute capability of current device"
+	"")
 
 register_flag_optional(USE_TBB
-        "Link against an in-tree oneTBB via FetchContent_Declare, see top level CMakeLists.txt for details."
+        "No-op if ONE_TBB_DIR is set. Link against an in-tree oneTBB via FetchContent_Declare, see top level CMakeLists.txt for details."
         "OFF")
 
 register_flag_optional(USE_ONEDPL
@@ -35,16 +36,31 @@ register_flag_optional(USE_ONEDPL
                    This requires the DPC++ compiler (other SYCL compilers are untested), required SYCL flags are added automatically."
         "OFF")
 
+register_flag_optional(STDIMPL
+  "Implementation strategy (default = DATA20):
+     DATA17  - Parallel algorithms over data (requires C++17).
+     DATA23  - (default) Parallel algorithms over data (requires C++20).
+     INDICES - Parallel algorithms over indices (requires C++20)."
+  "DATA20"
+)
+
 macro(setup)
-    set(CMAKE_CXX_STANDARD 17)
+    register_definitions(${STDIMPL})
+    if (${STDIMPL} STREQUAL "DATA17")
+      set(CMAKE_CXX_STANDARD 17)
+    elseif (${STDIMPL} STREQUAL "INDICES")
+      set(CMAKE_CXX_STANDARD 20)
+    elseif (${STDIMPL} STREQUAL "DATA23")
+      set(CMAKE_CXX_STANDARD 23)
+    endif ()
     if (NVHPC_OFFLOAD)
-        set(NVHPC_FLAGS -stdpar -gpu=${NVHPC_OFFLOAD})
+        set(NVHPC_FLAGS -stdpar=gpu -gpu=${NVHPC_OFFLOAD})
         # propagate flags to linker so that it links with the gpu stuff as well
         register_append_cxx_flags(ANY ${NVHPC_FLAGS})
         register_append_link_flags(${NVHPC_FLAGS})
     endif ()
     if (USE_TBB)
-        register_link_library(TBB::tbb)
+      register_link_library(TBB::tbb)
     endif ()
     if (USE_ONEDPL)
         register_definitions(USE_ONEDPL)

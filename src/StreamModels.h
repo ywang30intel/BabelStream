@@ -3,12 +3,8 @@
 
 #if defined(CUDA)
 #include "CUDAStream.h"
-#elif defined(STD_DATA)
-#include "STDDataStream.h"
-#elif defined(STD_INDICES)
-#include "STDIndicesStream.h"
-#elif defined(STD_RANGES)
-#include "STDRangesStream.hpp"
+#elif defined(STD)
+#include "STDStream.h"
 #elif defined(TBB)
 #include "TBBStream.hpp"
 #elif defined(THRUST)
@@ -63,17 +59,9 @@ std::unique_ptr<Stream<T>> make_stream(Args... args) {
   // Use the Kokkos implementation
   return std::make_unique<KokkosStream<T>>(args...);
 
-#elif defined(STD_DATA)
+#elif defined(STD)
   // Use the C++ STD data-oriented implementation
-  return std::make_unique<STDDataStream<T>>(args...);
-
-#elif defined(STD_INDICES)
-  // Use the C++ STD index-oriented implementation
-  return std::make_unique<STDIndicesStream<T>>(args...);
-
-#elif defined(STD_RANGES)
-  // Use the C++ STD ranges implementation
-  return std::make_unique<STDRangesStream<T>>(args...);
+  return std::make_unique<STDStream<T>>(args...);
 
 #elif defined(TBB)
   // Use the C++20 implementation

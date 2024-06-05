@@ -5,17 +5,26 @@
 // source code
 
 #pragma once
-#include "dpl_shim.h"
 
 #include <iostream>
 #include <stdexcept>
 #include "Stream.h"
 
-#define IMPLEMENTATION_STRING "STD (data-oriented)"
+#ifdef DATA17
+#define STDIMPL "DATA17"
+#elif DATA23
+#define STDIMPL "DATA23"
+#elif INDICES
+#define STDIMPL "INDICES"
+#else
+#error unimplemented
+#endif
+
+#define IMPLEMENTATION_STRING "STD (" STDIMPL ")"
 
 
 template <class T>
-class STDDataStream : public Stream<T>
+class STDStream : public Stream<T>
 {
   protected:
     // Size of arrays
@@ -25,9 +34,9 @@ class STDDataStream : public Stream<T>
     T *a, *b, *c;
 
   public:
-    STDDataStream(BenchId bs, const intptr_t array_size, const int device_id,
+    STDStream(BenchId bs, const intptr_t array_size, const int device_id,
 		  T initA, T initB, T initC) noexcept;
-    ~STDDataStream();
+    ~STDStream();
 
     void copy() override;
     void add() override;

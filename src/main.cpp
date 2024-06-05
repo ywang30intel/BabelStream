@@ -332,13 +332,13 @@ void check_solution(const size_t num_times, T const* a, T const* b, T const* c, 
   size_t failed = 0;
   T max_rel = std::numeric_limits<T>::epsilon() * T(100.0);
   T max_rel_dot = std::numeric_limits<T>::epsilon() * T(10000000.0);
-  auto check = [&](const char* name, T is, T should, T max_rel, size_t i = size_t(-1)) {
+  auto check = [&](const char* name, T is, T should, T mrel, size_t i = size_t(-1)) {
     // Relative difference:
     T diff = std::abs(is - should);
     T abs_is = std::abs(is);
     T abs_sh = std::abs(should);
     T largest = std::max(abs_is, abs_sh);
-    T same = diff <= largest * max_rel;
+    T same = diff <= largest * mrel;
     if (!same || std::isnan(is)) {
       ++failed;
       if (failed > 10) return;
@@ -346,7 +346,8 @@ void check_solution(const size_t num_times, T const* a, T const* b, T const* c, 
       if (i != size_t(-1)) std::cerr << "[" << i << "]";
       std::cerr << ": " << is << " (is) != " << should
 		<< " (should)" << ", diff=" << diff << " > "
-		<< largest * max_rel << std::endl;
+		<< largest * mrel << " (largest=" << largest
+		<< ", max_rel=" << mrel << ")" << std::endl;
     }
   };
 
@@ -360,9 +361,9 @@ void check_solution(const size_t num_times, T const* a, T const* b, T const* c, 
 
   // Calculate the L^infty-norm relative error
   for (size_t i = 0; i < array_size; ++i) {
-    check("a", a[i], goldA, i, max_rel);
-    check("b", b[i], goldB, i, max_rel);
-    check("c", c[i], goldC, i, max_rel);
+    check("a", a[i], goldA, max_rel, i);
+    check("b", b[i], goldB, max_rel, i);
+    check("c", c[i], goldC, max_rel, i);
   }
 
   if (failed > 0 && !silence_errors)

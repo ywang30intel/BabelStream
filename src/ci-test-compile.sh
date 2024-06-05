@@ -152,9 +152,10 @@ build_gcc() {
       *)   dpl_conditional_flags="-DFETCH_ONEDPL=ON -DFETCH_TBB=ON -DUSE_TBB=ON -DCXX_EXTRA_FLAGS=-D_GLIBCXX_USE_TBB_PAR_BACKEND=0" ;;
     esac
     # some distributions like Ubuntu bionic implements std par with TBB, so conditionally link it here
-    run_build $name "${GCC_CXX:?}" std-data    "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
-    run_build $name "${GCC_CXX:?}" std-indices "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
-    run_build $name "${GCC_CXX:?}" std-ranges  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
+    run_build $name "${GCC_CXX:?}" std    "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=DATA17"
+    # Requires GCC 14 and newer CMake for C++23 support    
+    #run_build $name "${GCC_CXX:?}" std    "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=DATA23"
+    run_build $name "${GCC_CXX:?}" std    "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=INDICES"
   done
 
   run_build $name "${GCC_CXX:?}" tbb "$cxx -DONE_TBB_DIR=$TBB_LIB"
@@ -251,9 +252,11 @@ build_clang() {
       OFF) dpl_conditional_flags="-DCXX_EXTRA_LIBRARIES=${CLANG_STD_PAR_LIB:-}" ;;
       *)   dpl_conditional_flags="-DFETCH_ONEDPL=ON -DFETCH_TBB=ON -DUSE_TBB=ON -DCXX_EXTRA_FLAGS=-D_GLIBCXX_USE_TBB_PAR_BACKEND=0"  ;;
     esac
-    run_build $name "${CLANG_CXX:?}" std-data     "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
-    run_build $name "${CLANG_CXX:?}" std-indices  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
-    # run_build $name "${CLANG_CXX:?}" std-ranges "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl" # not yet supported
+    run_build $name "${CLANG_CXX:?}" std  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=DATA17"
+    # Requires GCC 14 and newer CMake for C++23 support
+    # run_build $name "${CLANG_CXX:?}" std  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=DATA23"
+    # TODO: clang is too old
+    #run_build $name "${CLANG_CXX:?}" std  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=INDICES"    
   done
 
   run_build $name "${CLANG_CXX:?}" tbb "$cxx -DONE_TBB_DIR=$TBB_LIB"
@@ -270,8 +273,10 @@ build_clang() {
 build_nvhpc() {
   local name="nvhpc_build"
   local cxx="-DCMAKE_CXX_COMPILER=${NVHPC_NVCXX:?}"
-  run_build $name "${NVHPC_NVCXX:?}" std-data "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY"
-  run_build $name "${NVHPC_NVCXX:?}" std-indices "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY"
+  run_build $name "${NVHPC_NVCXX:?}" std "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY -DSTDIMPL=DATA17"
+  # Requires GCC 14 and newer CMake for C++23 support
+  # run_build $name "${NVHPC_NVCXX:?}" std "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY -DSTDIMPL=DATA23"
+  run_build $name "${NVHPC_NVCXX:?}" std "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY -DSTDIMPL=INDICES"  
 
   run_build $name "${NVHPC_NVCXX:?}" acc "$cxx -DTARGET_DEVICE=gpu -DTARGET_PROCESSOR=px -DCUDA_ARCH=$NV_ARCH_CCXY"
   run_build $name "${NVHPC_NVCXX:?}" acc "$cxx -DTARGET_DEVICE=multicore -DTARGET_PROCESSOR=zen"

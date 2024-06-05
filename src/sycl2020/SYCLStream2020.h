@@ -14,7 +14,15 @@
 
 #include <sycl/sycl.hpp>
 
-#define IMPLEMENTATION_STRING "SYCL2020 accessors"
+#ifdef SYCL2020ACC
+#define SYCLIMPL "Accessors"
+#elif SYCL2020USM
+#define SYCLIMPL "USM"
+#else
+#error unimplemented
+#endif
+
+#define IMPLEMENTATION_STRING "SYCL2020 " SYCLIMPL
 
 template <class T>
 class SYCLStream : public Stream<T>
@@ -28,16 +36,14 @@ class SYCLStream : public Stream<T>
     std::unique_ptr<sycl::queue> queue;
 
     // Buffers
-    sycl::buffer<T> d_a;
-    sycl::buffer<T> d_b;
-    sycl::buffer<T> d_c;
-    sycl::buffer<T> d_sum;
+    T *a, *b, *c, *sum{};
+    sycl::buffer<T> d_a, d_b, d_c, d_sum;
 
   public:
 
     SYCLStream(BenchId bs, const intptr_t array_size, const int device_id,
 	       T initA, T initB, T initC);
-    ~SYCLStream() = default;
+    ~SYCLStream();
 
     void copy() override;
     void add() override;
