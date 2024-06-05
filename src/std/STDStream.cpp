@@ -149,7 +149,7 @@ template <class T>
 void STDStream<T>::nstream()
 {
   //  a[i] += b[i] + scalar * c[i];
-#if defined(DATA17) || defined(DATA23) // Until we can require GCC 14.1
+#if defined(DATA17)
   //  Need to do in two round-trips with C++17 STL.
   //  1: a[i] += b[i]
   //  2: a[i] += scalar * c[i];
@@ -160,6 +160,7 @@ void STDStream<T>::nstream()
   auto as = std::ranges::subrange(a, a + array_size);
   auto bs = std::ranges::subrange(b, b + array_size);
   auto cs = std::ranges::subrange(c, c + array_size);
+  auto r = std::views::zip(as, bs, cs);
   std::transform(exe_policy, r.begin(), r.end(), a, [](auto vs) {
       auto [a, b, c] = vs;
       return a + b + startScalar * c;

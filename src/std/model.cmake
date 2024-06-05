@@ -20,6 +20,10 @@ register_flag_optional(NVHPC_OFFLOAD
            ccnative - Compiles for compute capability of current device"
 	"")
 
+register_flag_optional(ACPP_OFFLOAD
+        "Enable offloading support (via the non-standard `-acpp-stdpar`) for AdaptiveCpp."
+	"OFF")
+      
 register_flag_optional(USE_TBB
         "No-op if ONE_TBB_DIR is set. Link against an in-tree oneTBB via FetchContent_Declare, see top level CMakeLists.txt for details."
         "OFF")
@@ -59,8 +63,17 @@ macro(setup)
         register_append_cxx_flags(ANY ${NVHPC_FLAGS})
         register_append_link_flags(${NVHPC_FLAGS})
     endif ()
+    if (ACPP_OFFLOAD)
+        set(ACPP_FLAGS --acpp-stdpar)
+        register_append_cxx_flags(ANY ${ACPP_FLAGS})
+        register_append_link_flags(${ACPP_FLAGS})      
+    endif ()
     if (USE_TBB)
-      register_link_library(TBB::tbb)
+      if (FETCH_TBB)
+	register_link_library(TBB::tbb)
+      else ()
+	register_link_library(tbb)
+      endif ()
     endif ()
     if (USE_ONEDPL)
         register_definitions(USE_ONEDPL)
