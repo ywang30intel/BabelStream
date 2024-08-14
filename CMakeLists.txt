@@ -50,7 +50,11 @@ option(BUILD_NATIVE "Builds for the current systems CPU and GPU architecture." O
 set(DEFAULT_DEBUG_FLAGS -O2 -fno-omit-frame-pointer)
 set(DEFAULT_RELEASE_FLAGS -O3)
 if (BUILD_NATIVE)
+  if(CMAKE_SYSTEM_PROCESSOR STREQUAL aarch64)
+    set(DEFAULT_RELEASE_FLAGS ${DEFAULT_RELEASE_FLAGS} -mcpu=native)
+  else()
     set(DEFAULT_RELEASE_FLAGS ${DEFAULT_RELEASE_FLAGS} -march=native)
+  endif()
 endif()
 
 macro(hint_flag FLAG DESCRIPTION)
