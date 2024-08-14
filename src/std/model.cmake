@@ -20,6 +20,10 @@ register_flag_optional(NVHPC_OFFLOAD
            ccnative - Compiles for compute capability of current device"
 	"")
 
+register_flag_optional(NVHPC_MULTICORE
+        "Enable multicore parallelization with the NVHPC SDK."
+	"")
+
 register_flag_optional(ACPP_OFFLOAD
         "Enable offloading support (via the non-standard `-acpp-stdpar`) for AdaptiveCpp."
 	"OFF")
@@ -76,7 +80,14 @@ macro(setup)
         # propagate flags to linker so that it links with the gpu stuff as well
         register_append_cxx_flags(ANY ${NVHPC_FLAGS})
         register_append_link_flags(${NVHPC_FLAGS})
+      endif ()
+    if (NVHPC_MULTICORE)
+        set(NVHPC_FLAGS -stdpar=multicore)
+        # propagate flags to linker so that it links with the gpu stuff as well
+        register_append_cxx_flags(ANY ${NVHPC_FLAGS})
+        register_append_link_flags(${NVHPC_FLAGS})
     endif ()
+
     if (ACPP_OFFLOAD)
         set(ACPP_FLAGS --acpp-stdpar)
         register_append_cxx_flags(ANY ${ACPP_FLAGS})
@@ -95,10 +106,9 @@ macro(setup)
     endif ()
     if (AMDGPU_TARGET_OFFLOAD)
         set(AMDGPU_TARGET_OFFLOAD_FLAGS --hipstdpar --offload-arch=${AMDGPU_TARGET_OFFLOAD})
-        if (NOT AMDGPU_TARGET_OFFLOAD MATCHES "^gfx9")
+        if (NOT AMDGPU_TARGET_OFFLOAD MATCHES "^gfx9" OR AMDGPU_INTERPOSE_ALLOC)
             list(APPEND AMDGPU_TARGET_OFFLOAD_FLAGS --hipstdpar-interpose-alloc)
         endif ()
-
         register_append_cxx_flags(ANY ${AMDGPU_TARGET_OFFLOAD_FLAGS})
         register_append_link_flags(--hipstdpar)
     endif ()
