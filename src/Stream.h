@@ -10,6 +10,11 @@
 #include <vector>
 #include <string>
 
+#ifdef ENABLE_CALIPER
+#include <caliper/cali.h>
+#include <adiak.h>
+#endif
+
 // Array values
 #define startA (0.1)
 #define startB (0.2)
