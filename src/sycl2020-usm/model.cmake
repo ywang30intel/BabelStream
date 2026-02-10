@@ -18,6 +18,10 @@ register_flag_optional(SYCL_COMPILER_DIR
            HIPSYCL|DPCPP - set to the root of the binary distribution that contains at least `bin/`, `include/`, and `lib/`"
         "")
 
+register_flag_optional(MEM "Device memory mode:
+        DEFAULT   - allocate host and device memory pointers.
+        PAGEFAULT - shared memory, only host pointers allocated."
+        "DEFAULT")
 
 macro(setup)
     set(CMAKE_CXX_STANDARD 17)
@@ -58,6 +62,8 @@ macro(setup)
     else ()
         message(FATAL_ERROR "SYCL_COMPILER=${SYCL_COMPILER} is unsupported")
     endif ()
+
+    register_definitions(${MEM})
 
 endmacro()
 

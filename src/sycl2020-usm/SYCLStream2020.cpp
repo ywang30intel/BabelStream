@@ -9,6 +9,8 @@
 
 #include <iostream>
 
+#define ALIGNMENT (1024 * 1024 * 2)
+
 // Cache list of devices
 bool cached = false;
 std::vector<sycl::device> devices;
@@ -59,11 +61,17 @@ SYCLStream<T>::SYCLStream(const intptr_t ARRAY_SIZE, const int device_index)
       throw std::runtime_error("SYCL errors detected");
     }
   }});
-
+#if defined(PAGEFAULT)
+  a = (T*)aligned_alloc(ALIGNMENT, array_size * sizeof(T));
+  b = (T*)aligned_alloc(ALIGNMENT, array_size * sizeof(T));
+  c = (T*)aligned_alloc(ALIGNMENT, array_size * sizeof(T));
+  sum = (T*)aligned_alloc(ALIGNMENT, ALIGNMENT);
+#else
   a = sycl::malloc_shared<T>(array_size, *queue);
   b = sycl::malloc_shared<T>(array_size, *queue);
   c = sycl::malloc_shared<T>(array_size, *queue);
   sum = sycl::malloc_shared<T>(1, *queue);
+#endif
 
   // No longer need list of devices
   devices.clear();
@@ -74,10 +82,17 @@ SYCLStream<T>::SYCLStream(const intptr_t ARRAY_SIZE, const int device_index)
 
 template<class T>
 SYCLStream<T>::~SYCLStream() {
+#if defined(PAGEFAULT)
+ free(a);
+ free(b);
+ free(c);
+ free(sum);
+#else
  sycl::free(a, *queue);
  sycl::free(b, *queue);
  sycl::free(c, *queue);
  sycl::free(sum, *queue);
+#endif
 }
 
 template <class T>
@@ -175,6 +190,14 @@ T SYCLStream<T>::dot()
 template <class T>
 void SYCLStream<T>::init_arrays(T initA, T initB, T initC)
 {
+#if defined(PAGEFAULT)
+  for (int i = 0; i < array_size; i++)
+  {
+    a[i] = initA;
+    b[i] = initB;
+    c[i] = initC;
+  }
+#else
   queue->submit([&](sycl::handler &cgh)
   {
     cgh.parallel_for(sycl::range<1>{array_size}, [=, a = this->a, b = this->b, c = this->c](sycl::id<1> idx)
@@ -186,6 +209,7 @@ void SYCLStream<T>::init_arrays(T initA, T initB, T initC)
   });
 
   queue->wait();
+#endif
 }
 
 template <class T>
