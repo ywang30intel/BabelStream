@@ -23,6 +23,13 @@
 #include "StreamModels.h"
 #include "Unit.h"
 
+#ifdef ENABLE_CALIPER
+#include <caliper/cali.h>
+#include <caliper/cali-mpi.h>
+#include <caliper/cali-manager.h>
+#include <adiak.hpp>
+#endif
+
 // Default size of 2^25
 intptr_t array_size = 33554432;
 size_t num_times = 100;
@@ -53,6 +60,29 @@ void parseArguments(int argc, char *argv[]);
 
 int main(int argc, char *argv[])
 {
+#ifdef ENABLE_CALIPER
+  	cali::ConfigManager calimgr;
+
+     if (calimgr.error()){
+      std::cerr << "caliper config error: " << calimgr.error_msg() << std::endl;
+    }
+    calimgr.start();
+
+    cali_config_preset("CALI_LOG_VERBOSITY", "2");
+    cali_config_preset("CALI_CALIPER_ATTRIBUTE_DEFAULT_SCOPE", "process");
+
+    adiak::init(nullptr);
+    adiak::collect_all();
+
+    cali_config_set("CALI_CALIPER_ATTRIBUTE_DEFAULT_SCOPE", "process");
+
+	adiak::value("BABELSTREAM version", "4.0");
+	adiak::value("num_times", num_times);
+	adiak::value("elements", ARRAY_SIZE);
+
+	CALI_MARK_FUNCTION_BEGIN;
+#endif  
+
   parseArguments(argc, argv);
 
   if (!output_as_csv)
@@ -68,6 +98,10 @@ int main(int argc, char *argv[])
   else
     run<double>();
 
+#ifdef ENABLE_CALIPER
+    adiak::fini();
+    calimgr.flush();
+#endif
   return EXIT_SUCCESS;
 }
 
@@ -120,7 +154,13 @@ std::vector<std::vector<double>> run_all(std::unique_ptr<Stream<T>>& stream, T& 
     for (size_t k = 0; k < num_times; k++) {
       for (size_t i = 0; i < num_benchmarks; ++i) {
 	if (!run_benchmark(bench[i])) continue;
+#ifdef ENABLE_CALIPER
+    CALI_MARK_BEGIN(bench[i].label);
+#endif 
 	timings[i].push_back(dt(bench[i]));
+#ifdef ENABLE_CALIPER
+    CALI_MARK_END(bench[i].label);
+#endif 
       }
     }
     break;
@@ -232,6 +272,16 @@ void run()
 
   std::unique_ptr<Stream<T>> stream
     = make_stream<T>(selection, array_size, deviceIndex, startA, startB, startC);
+  
+#ifdef ENABLE_CALIPER
+    CALI_MARK_BEGIN("init_arrays");
+#endif
+
+  auto initElapsedS = time([&] { stream->init_arrays(startA, startB, startC); });
+
+#ifdef ENABLE_CALIPER
+    CALI_MARK_END("init_arrays");
+#endif
 
   // Result of the Dot kernel, if used.
   T sum{};

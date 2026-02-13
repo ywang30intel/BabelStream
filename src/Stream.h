@@ -13,7 +13,18 @@
 #include <string>
 #include "benchmark.h"
 
+#ifdef ENABLE_CALIPER
+#include <caliper/cali.h>
+#include <adiak.h>
+#endif
+
 using std::intptr_t;
+
+// Array values
+#define startA (0.1)
+#define startB (0.2)
+#define startC (0.0)
+#define startScalar (0.4)
 
 template <class T>
 class Stream
