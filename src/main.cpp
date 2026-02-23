@@ -273,16 +273,6 @@ void run()
   std::unique_ptr<Stream<T>> stream
     = make_stream<T>(selection, array_size, deviceIndex, startA, startB, startC);
   
-#ifdef ENABLE_CALIPER
-    CALI_MARK_BEGIN("init_arrays");
-#endif
-
-  auto initElapsedS = time([&] { stream->init_arrays(startA, startB, startC); });
-
-#ifdef ENABLE_CALIPER
-    CALI_MARK_END("init_arrays");
-#endif
-
   // Result of the Dot kernel, if used.
   T sum{};
   std::vector<std::vector<double>> timings = run_all<T>(stream, sum);

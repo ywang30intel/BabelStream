@@ -105,6 +105,7 @@ run_build() {
 # # AMD needs this rocm_path thing exported...
 # export ROCM_PATH="/opt/rocm-4.5.0"
 # HIP_CXX="/opt/rocm-4.5.0/bin/hipcc"
+# COMPUTECPP_DIR="/home/tom/Downloads/ComputeCpp-CE-2.7.0-x86_64-linux-gnu/"
 # DPCPP_DIR="/home/tom/Downloads/dpcpp_compiler"
 # HIPSYCL_DIR="/opt/hipsycl/cff515c/"
 #
@@ -138,7 +139,6 @@ build_gcc() {
   local name="gcc_build"
   local cxx="-DCMAKE_CXX_COMPILER=${GCC_CXX:?}"
 
-  run_build $name "${GCC_CXX:?}" serial "$cxx"
   run_build $name "${GCC_CXX:?}" omp "$cxx"
   if [ "$MODEL" = "all" ] || [ "$MODEL" = "OMP" ]; then
     # sanity check that it at least runs
@@ -152,10 +152,9 @@ build_gcc() {
       *)   dpl_conditional_flags="-DFETCH_ONEDPL=ON -DFETCH_TBB=ON -DUSE_TBB=ON -DCXX_EXTRA_FLAGS=-D_GLIBCXX_USE_TBB_PAR_BACKEND=0" ;;
     esac
     # some distributions like Ubuntu bionic implements std par with TBB, so conditionally link it here
-    run_build $name "${GCC_CXX:?}" std    "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=DATA17"
-    # Requires GCC 14 and newer CMake for C++23 support    
-    #run_build $name "${GCC_CXX:?}" std    "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=DATA23"
-    run_build $name "${GCC_CXX:?}" std    "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=INDICES"
+    run_build $name "${GCC_CXX:?}" std-data    "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
+    run_build $name "${GCC_CXX:?}" std-indices "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
+    run_build $name "${GCC_CXX:?}" std-ranges  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
   done
 
   run_build $name "${GCC_CXX:?}" tbb "$cxx -DONE_TBB_DIR=$TBB_LIB"
@@ -221,7 +220,6 @@ build_gcc() {
 build_clang() {
   local name="clang_build"
   local cxx="-DCMAKE_CXX_COMPILER=${CLANG_CXX:?}"
-  run_build $name "${CLANG_CXX:?}" serial "$cxx"
   run_build $name "${CLANG_CXX:?}" omp "$cxx"
 
   if [ "${CLANG_OMP_OFFLOAD_AMD:-false}" != "false" ]; then
@@ -252,11 +250,9 @@ build_clang() {
       OFF) dpl_conditional_flags="-DCXX_EXTRA_LIBRARIES=${CLANG_STD_PAR_LIB:-}" ;;
       *)   dpl_conditional_flags="-DFETCH_ONEDPL=ON -DFETCH_TBB=ON -DUSE_TBB=ON -DCXX_EXTRA_FLAGS=-D_GLIBCXX_USE_TBB_PAR_BACKEND=0"  ;;
     esac
-    run_build $name "${CLANG_CXX:?}" std  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=DATA17"
-    # Requires GCC 14 and newer CMake for C++23 support
-    # run_build $name "${CLANG_CXX:?}" std  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=DATA23"
-    # TODO: clang is too old
-    #run_build $name "${CLANG_CXX:?}" std  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl -DSTDIMPL=INDICES"    
+    run_build $name "${CLANG_CXX:?}" std-data     "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
+    run_build $name "${CLANG_CXX:?}" std-indices  "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl"
+    # run_build $name "${CLANG_CXX:?}" std-ranges "$cxx $dpl_conditional_flags -DUSE_ONEDPL=$use_onedpl" # not yet supported
   done
 
   run_build $name "${CLANG_CXX:?}" tbb "$cxx -DONE_TBB_DIR=$TBB_LIB"
@@ -273,17 +269,14 @@ build_clang() {
 build_nvhpc() {
   local name="nvhpc_build"
   local cxx="-DCMAKE_CXX_COMPILER=${NVHPC_NVCXX:?}"
-  run_build $name "${NVHPC_NVCXX:?}" std "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY -DSTDIMPL=DATA17"
-  # Requires GCC 14 and newer CMake for C++23 support
-  # run_build $name "${NVHPC_NVCXX:?}" std "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY -DSTDIMPL=DATA23"
-  run_build $name "${NVHPC_NVCXX:?}" std "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY -DSTDIMPL=INDICES"  
+  run_build $name "${NVHPC_NVCXX:?}" std-data "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY"
+  run_build $name "${NVHPC_NVCXX:?}" std-indices "$cxx -DNVHPC_OFFLOAD=$NV_ARCH_CCXY"
 
   run_build $name "${NVHPC_NVCXX:?}" acc "$cxx -DTARGET_DEVICE=gpu -DTARGET_PROCESSOR=px -DCUDA_ARCH=$NV_ARCH_CCXY"
   run_build $name "${NVHPC_NVCXX:?}" acc "$cxx -DTARGET_DEVICE=multicore -DTARGET_PROCESSOR=zen"
 }
 
 build_aocc() {
-  run_build aocc_build "${AOCC_CXX:?}" serial "-DCMAKE_CXX_COMPILER=${AOCC_CXX:?}"
   run_build aocc_build "${AOCC_CXX:?}" omp "-DCMAKE_CXX_COMPILER=${AOCC_CXX:?}"
 }
 
@@ -317,7 +310,6 @@ build_icpc() {
   set -u
   local name="intel_build"
   local cxx="-DCMAKE_CXX_COMPILER=${ICPC_CXX:?}"
-  run_build $name "${ICPC_CXX:?}" serial "$cxx"
   run_build $name "${ICPC_CXX:?}" omp "$cxx"
   run_build $name "${ICPC_CXX:?}" ocl "$cxx -DOpenCL_LIBRARY=${OCL_LIB:?}"
   if check_cmake_ver "3.20.0"; then
@@ -335,17 +327,17 @@ build_icpc() {
 }
 
 build_dpcpp() {
-  run_build intel_build "${DPCPP_DIR:?}" sycl "-DCMAKE_CXX_COMPILER=${GCC_CXX:?} \
+  run_build intel_build "${DPCPP_DIR:?}" sycl-ai "-DCMAKE_CXX_COMPILER=${GCC_CXX:?} \
   -DSYCL_COMPILER=DPCPP \
   -DSYCL_COMPILER_DIR=${DPCPP_DIR:?}"
 
   #  for oneAPI BaseKit:
   #  source /opt/intel/oneapi/setvars.sh -force
-  #  run_build intel_build "dpcpp" sycl "-DCMAKE_CXX_COMPILER=${GCC_CXX:?} -DSYCL_COMPILER=ONEAPI-DPCPP"
+  #  run_build intel_build "dpcpp" sycl-ai "-DCMAKE_CXX_COMPILER=${GCC_CXX:?} -DSYCL_COMPILER=ONEAPI-DPCPP"
 }
 
 build_hipsycl() {
-  run_build hipsycl_build "syclcc" sycl "
+  run_build hipsycl_build "syclcc" sycl-ai "
   -DSYCL_COMPILER=HIPSYCL \
   -DSYCL_COMPILER_DIR=${HIPSYCL_DIR:?}"
 }
@@ -364,6 +356,7 @@ dpcpp) build_dpcpp ;;
 hipsycl) build_hipsycl ;;
 
 # XXX below are local only; licence or very large download required, candidate for local runner
+computecpp) build_computecpp ;;
 icpx) build_icpx ;;
 icpc) build_icpc ;;
 
@@ -377,6 +370,7 @@ all)
   build_dpcpp
   build_hipsycl
 
+  build_computecpp
   build_icpx
   build_icpc
 
